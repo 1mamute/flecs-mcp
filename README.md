@@ -53,8 +53,7 @@ running world together:
 
 - **Inspect the live world.** "Show entities with Position and Velocity and their values"
   becomes the FLECS query `Position, Velocity`. "Health but no Position" becomes
-  `Health, !Position`. The query language can't express things like "within 10 units of
-  #421", so the agent queries the positions and computes those itself.
+  `Health, !Position`. This makes the MCP effectively an ECS debugger interface for the AI.
 - **Debug systems.** Given "The player isn't moving, investigate", the agent inspects the
   player and the systems that match it (`flecs_get_entity` with `matches`). It then compares
   the player with an entity that does move, and forms a hypothesis from real state rather
