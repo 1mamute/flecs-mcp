@@ -13,6 +13,8 @@ changes to the world.
 
 ## Contents
 
+- [Why it was created](#why-it-was-created)
+- [What you can do with it](#what-you-can-do-with-it)
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
@@ -26,6 +28,52 @@ changes to the world.
 - [Architecture](#architecture)
 - [Development](#development)
 - [Troubleshooting](#troubleshooting)
+
+## Why it was created
+
+Coding agents such as Claude Code can read your source code, but not the world that code
+produces at runtime. In an ECS, bugs usually live in runtime state: which components an
+entity actually has, what values they hold, and which systems match it. Without runtime
+access, you end up pasting debugger output into the chat.
+
+flecs-mcp gives the agent that runtime view, so it can reason over the code and the
+running world together:
+
+```text
+               Claude Code
+                    │
+         ┌──────────┴──────────┐
+    Source code           Running world
+    (C/C++, build)        (flecs-mcp → FLECS REST)
+         └──────────┬──────────┘
+               AI reasoning
+```
+
+## What you can do with it
+
+- **Inspect the live world.** "Show entities with Position and Velocity and their values"
+  becomes the FLECS query `Position, Velocity`. "Health but no Position" becomes
+  `Health, !Position`. The query language can't express things like "within 10 units of
+  #421", so the agent queries the positions and computes those itself.
+- **Debug systems.** Given "The player isn't moving, investigate", the agent inspects the
+  player and the systems that match it (`flecs_get_entity` with `matches`). It then compares
+  the player with an entity that does move, and forms a hypothesis from real state rather
+  than from source code alone.
+- **Close the development loop.** Given "Implement enemy movement and verify it", the agent
+  edits and builds the code, runs the game, records enemy positions, queries again later,
+  and fixes the code if nothing moved.
+- **Check expected state.** For example, check that a spawned enemy has `Position`,
+  `Health` and `AIState`. This helps with emergent behavior that is awkward to unit-test.
+- **Explore the architecture.** See how many entities use each component
+  (`flecs_list_components`), which systems exist and what they match (`flecs_list_queries`,
+  `flecs_run_named_query`), and how FLECS plans a query (`flecs_explain_query`).
+- **Investigate performance.** Ask "Which systems take the most frame time?"
+  (`flecs_get_pipeline_stats`, `flecs_get_world_stats`), then cross-check against match
+  counts, the source code, or other MCP servers such as a metrics backend.
+- **Experiment** (requires `FLECS_REST_ALLOW_MUTATIONS=true`). Create entities, set component
+  values or pause a system, then watch what happens. This makes the running world a
+  sandbox for experiments, or an AI-driven editing console. Deleting entities and running
+  scripts are not available, by design.
 
 ## Requirements
 
