@@ -140,6 +140,21 @@ def entity_url_path(path: str) -> str:
     return "/".join(quote(element, safe="") for element in elements)
 
 
+def encode_query(params: Mapping[str, str]) -> str:
+    """Encode query parameters the way every FLECS release decodes them.
+
+    FLECS splits the query string on ``?&=`` before decoding, so every key and
+    value is fully percent-encoded, including ``&``, ``=`` and ``+``. Spaces
+    become ``%20``, never ``+`` (form encoding, which httpx ``params`` uses):
+    released FLECS up to at least v4.1.6 only decodes ``%XX`` and would receive
+    a literal ``+``. Decoding ``+`` as a space was only added after v4.1.6.
+    """
+    return "&".join(
+        f"{quote(key, safe='')}={quote(value, safe='')}"
+        for key, value in params.items()
+    )
+
+
 def strip_ansi(text: str) -> str:
     """Remove terminal color codes (FLECS colors query plans)."""
     return _ANSI_ESCAPE_RE.sub("", text)
@@ -431,9 +446,11 @@ class FlecsRestClient:
         legitimately contain an ``error`` member.
         """
         endpoint = f"{method} /{path}"
+        # Never use httpx params=: it encodes spaces as '+' (see encode_query).
+        url = httpx.URL(path, query=encode_query(params).encode()) if params else path
         started = time.perf_counter()
         try:
-            response = await self._client().request(method, path, params=params)
+            response = await self._client().request(method, url)
         except httpx.ConnectTimeout as exc:
             raise FlecsTimeoutError(
                 f"Timed out after {self._config.timeout:g} s while connecting to the "

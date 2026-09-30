@@ -30,7 +30,7 @@ An MCP server (FastMCP 4) that adapts the FLECS ECS REST API (`EcsRest`, port 27
 ### FLECS REST behaviors the client depends on (verified against the flecs source)
 
 - **Entity paths:** tool arguments use FLECS dotted notation (`Sun.Earth`, `#123`, `main\.flecs`). `entity_url_path()` converts them to the `/`-separated, percent-encoded URL form. It escapes a literal `/` as `\/` and doesn't split on dots inside `<...>`.
-- **Parameter encoding:** FLECS splits query parameters on `?&=` *before* percent-decoding them, and decodes `+` as a space. Always pass values through httpx `params`; never build query strings by hand.
+- **Parameter encoding:** FLECS splits query parameters on `?&=` *before* percent-decoding them. Released FLECS (≤ v4.1.6) decodes only `%XX`, so a `+` stays a literal `+`. Only FLECS after v4.1.6 decodes `+` as a space. `_request()` builds every query string with `encode_query()`, which percent-encodes everything and writes spaces as `%20`. Never pass httpx `params=`, because it encodes spaces as `+`. `params_of()` in the tests decodes the way v4.1.6 does, so a stray `+` fails the tests.
 - **Query errors in 200 responses:** queries are sent with `try=true`, so FLECS reports parse errors as HTTP 200 with a `{"error": ...}` body. `_request(..., error_in_body=True)` handles this, and must only be used for `/query`, because component values can legitimately contain an `error` member.
 - **Stats crash guard:** `GET /stats/*` crashes the FLECS app if the `FlecsStats` module isn't imported. `_ensure_stats_module()` checks for `flecs.stats` first; keep that guard.
 - **Paging:** `limit=0` means "unlimited" to FLECS, so `QueryOptions` enforces a limit of 1–1000.

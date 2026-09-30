@@ -115,8 +115,9 @@ async def test_query_encodes_expression_and_paging(
 
     assert result == {"results": [EARTH]}
     raw_query = fake_flecs.last.url.query.decode()
-    assert "%2B" in raw_query  # '+' would otherwise be decoded as a space by FLECS
+    assert "%2B" in raw_query  # a literal '+' is decoded as a space by newer FLECS
     assert "%26" in raw_query  # '&' must not split the parameter
+    assert "+" not in raw_query  # released FLECS does not decode '+' as a space
     params = params_of(fake_flecs.last)
     assert params["expr"] == expr
     assert params["try"] == "true"
@@ -124,6 +125,35 @@ async def test_query_encodes_expression_and_paging(
     assert params["offset"] == "10"
     assert params["table"] == "true"
     assert params["full_paths"] == "true"
+
+
+async def test_query_encodes_spaces_as_percent_20(
+    client: FlecsRestClient, fake_flecs: FakeFlecs
+) -> None:
+    # Released FLECS (<= 4.1.6) only decodes %XX; a '+' arrives as a literal '+'.
+    fake_flecs.reply("GET", "/query", {"results": []})
+
+    await client.query("Position, Velocity", QueryOptions())
+
+    assert "expr=Position%2C%20Velocity&" in fake_flecs.last.url.query.decode()
+
+
+async def test_component_pair_with_space_is_percent_encoded(
+    client: FlecsRestClient, fake_flecs: FakeFlecs
+) -> None:
+    fake_flecs.reply("GET", "/component/Sun/Earth", {"x": 1})
+    fake_flecs.reply("PUT", "/component/Sun/Earth")
+
+    await client.get_component("Sun.Earth", "(ChildOf, Sun)")
+    assert fake_flecs.last.url.query == b"component=%28ChildOf%2C%20Sun%29"
+
+    await client.set_component("Sun.Earth", "(Name, Sun)", {"name": "USS Enterprise"})
+    raw_query = fake_flecs.last.url.query.decode()
+    assert "+" not in raw_query
+    assert params_of(fake_flecs.last) == {
+        "component": "(Name, Sun)",
+        "value": '{"name":"USS Enterprise"}',
+    }
 
 
 async def test_query_with_empty_result(
@@ -139,11 +169,12 @@ async def test_named_query_sends_name_and_variables(
 ) -> None:
     fake_flecs.reply("GET", "/query", {"results": []})
 
-    await client.named_query("game.PlanetsQuery", QueryOptions(), "parent:Sun")
+    await client.named_query("game.Planets Query", QueryOptions(), "x:e1, y:e2")
 
+    assert "+" not in fake_flecs.last.url.query.decode()
     params = params_of(fake_flecs.last)
-    assert params["name"] == "game.PlanetsQuery"
-    assert params["vars"] == "parent:Sun"
+    assert params["name"] == "game.Planets Query"
+    assert params["vars"] == "x:e1, y:e2"
     assert "expr" not in params
 
 

@@ -4,7 +4,7 @@ import json
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import parse_qs
+from urllib.parse import unquote
 
 import httpx
 import pytest
@@ -83,9 +83,18 @@ class FakeFlecs:
 
 
 def params_of(request: httpx.Request) -> dict[str, str]:
-    """Decoded query parameters of ``request`` (single-valued)."""
+    """Query parameters of ``request``, decoded as released FLECS decodes them.
+
+    FLECS v4.1.6 splits on ``&``/``=`` and then decodes ``%XX`` only; a ``+``
+    stays a literal ``+``, so a form-encoded space would make assertions fail.
+    """
     query = request.url.query.decode()
-    return {k: v[0] for k, v in parse_qs(query, keep_blank_values=True).items()}
+    params: dict[str, str] = {}
+    for pair in query.split("&") if query else []:
+        key, _, value = pair.partition("=")
+        assert "=" not in value, f"unencoded '=' in {pair!r}"
+        params[unquote(key)] = unquote(value)
+    return params
 
 
 @pytest.fixture

@@ -423,7 +423,7 @@ protocol details are isolated in [`client.py`](src/flecs_mcp/client.py).
 |---|---|
 | Endpoints used | `GET /entity`, `/component`, `/type_info`, `/query`, `/components`, `/queries`, `/stats/world`, `/stats/pipeline`; `PUT /entity`, `/component`, `/toggle`; `DELETE /component`. |
 | Entity paths | URLs use `/` separators, while FLECS prints paths with `.`. The client converts dotted paths, percent-encodes each element, and escapes a literal `/` in a name as `\/`. |
-| Parameters | Booleans are sent as the literal strings `true`/`false`. Every value is percent-encoded: FLECS splits parameters before decoding and decodes `+` as a space. |
+| Parameters | Booleans are sent as the literal strings `true`/`false`. Every key and value is fully percent-encoded, with spaces as `%20`: FLECS splits parameters on `?&=` before decoding. Released FLECS (v4.1.6 and earlier) decodes only `%XX`, so a form-encoded `+` would arrive as a literal `+`. Only FLECS after v4.1.6 also decodes `+` as a space. |
 | Query errors | Queries are sent with `try=true`, so FLECS doesn't log agent mistakes to the application console. FLECS then reports parse errors as `{"error": ...}` with HTTP 200, and the client treats that as a failure. This check applies only to query endpoints, because component values may legitimately contain an `error` member. |
 | Error bodies | FLECS doesn't JSON-escape error messages, so error bodies may be invalid JSON. The client extracts the message anyway. |
 | Paging | `limit` must be ≥ 1, because FLECS treats `limit=0` as unlimited. The FLECS default is 1000; this server defaults to 100. |
