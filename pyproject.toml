@@ -1,0 +1,86 @@
+[project]
+name = "flecs-mcp"
+version = "0.1.0"
+description = "MCP server that exposes the FLECS ECS REST API to MCP clients and AI agents"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "1mamute", email = "gabrielbassinello@hotmail.com" }
+]
+keywords = ["mcp", "model-context-protocol", "flecs", "ecs", "fastmcp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Debuggers",
+    "Typing :: Typed",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastmcp>=4.0.10,<5",
+    "httpx>=0.28.1,<1",
+    "mcp>=2.2.0,<3",
+    "pydantic>=2.11,<3",
+]
+
+[project.scripts]
+flecs-mcp = "flecs_mcp.server:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.0",
+    "ruff>=0.16.9",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "B",     # flake8-bugbear
+    "UP",    # pyupgrade
+    "SIM",   # flake8-simplify
+    "C4",    # flake8-comprehensions
+    "RUF",   # ruff-specific rules
+    "PT",    # flake8-pytest-style
+    "ASYNC", # flake8-async
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["flecs_mcp"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+include = ["src", "tests", "scripts"]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+strict = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = ["-ra", "--strict-markers", "--strict-config", "--cov", "--cov-report=term-missing"]
+
+[tool.coverage.run]
+source = ["flecs_mcp"]
+branch = true
+
+[tool.coverage.report]
+skip_covered = true
+exclude_also = ['if __name__ == "__main__":']
